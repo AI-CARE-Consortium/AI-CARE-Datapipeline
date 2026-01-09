@@ -1,0 +1,257 @@
+---
+title: "Pipeline Report"
+author: "AI-CARE Working Group AP2"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Statistiken zu den Ausgabedaten 
+### Tabelle: Fallanzahl nach Modul und Entität
+
+```{r load_data, echo=FALSE, warnings = FALSE, message = FALSE}
+OUTPUT_DIRECTORY <- "Ausgabedaten"
+ 
+
+read_outputs <- function(file_name, subfolder=FALSE) {
+  
+  if (subfolder==FALSE) {
+    path <- paste0(OUTPUT_DIRECTORY, "/gesamt/", file_name, ".csv")
+    entity <- "gesamt"
+  } else {
+    path <- paste0(OUTPUT_DIRECTORY, "/gesamt/", subfolder, "/", subfolder, "_", file_name, ".csv")
+    entity <- subfolder
+  }
+  dta <- read.csv(path)
+  N <- nrow(dta)
+  if (N==1) {
+    if(colnames(dta)[1]=="V1") {
+      N <- 0
+    }
+  }
+  return(data.frame(Modul = file_name, Entitaet = entity, N = N))
+}
+modul_names <- c("patient", "tumor", "modul_mamma", "op", "strahlentherapie", "systemtherapie", "fe")
+output_file_names <- list.files(paste0(OUTPUT_DIRECTORY, "/gesamt"), pattern = "\\.csv$")
+output_file_input <- substr(output_file_names, 1, nchar(output_file_names)-4)
+output_file_input <- output_file_input[output_file_input %in% modul_names]
+
+subfolders_found <- list.dirs(paste0(OUTPUT_DIRECTORY, "/gesamt"), recursive = FALSE, full.names = FALSE)
+subfolders_input <- subfolders_found[subfolders_found %in% c("C8", "C34", "C50", "C73")]
+
+output_gesamt <- list()
+
+for (i in 1:length(as.list(c(FALSE, subfolders_input)))) {
+  subfolder <- as.list(c(FALSE, subfolders_input))[[i]]
+  output_gesamt[[i]] <- lapply(output_file_input, read_outputs, subfolder = subfolder)
+}
+
+gesamt_frame <- do.call(rbind, lapply(output_gesamt, function(sublist) {do.call(rbind, sublist)}))
+gesamt_frame_wide <- reshape(gesamt_frame, idvar = "Modul", timevar = "Entitaet", direction = "wide")
+colnames(gesamt_frame_wide)[colnames(gesamt_frame_wide) == "N.gesamt"] <- "Gesamt"
+colnames(gesamt_frame_wide)[colnames(gesamt_frame_wide) == "N.C34"] <- "Lungenkrebs"
+colnames(gesamt_frame_wide)[colnames(gesamt_frame_wide) == "N.C50"] <- "Mammakarzinom"
+colnames(gesamt_frame_wide)[colnames(gesamt_frame_wide) == "N.C73"] <- "Schilddrüse"
+colnames(gesamt_frame_wide)[colnames(gesamt_frame_wide) == "N.C8"] <- "Non-Hodgkin-Lymphom"
+
+
+knitr::kable(gesamt_frame_wide)
+```
+
+### Grafik: Fallanzahl nach Modul und Entität
+
+```{r, echo=FALSE, fig.width=10, fig.height=6, warnings = FALSE, message = FALSE}
+suppressWarnings(library(ggplot2))
+gesamt_frame$Entitaet[gesamt_frame$Entitaet == "C34"] <- "Lungenkrebs"
+gesamt_frame$Entitaet[gesamt_frame$Entitaet == "C50"] <- "Mammakarzinom"
+gesamt_frame$Entitaet[gesamt_frame$Entitaet == "C73"] <- "Schilddrüse"
+gesamt_frame$Entitaet[gesamt_frame$Entitaet == "C8"] <- "Non-Hodgkin-Lymphom"
+gesamt_frame$Entitaet[gesamt_frame$Entitaet == "gesamt"] <- "Gesamt"
+
+
+ggplot(gesamt_frame, aes(x = factor(Modul, level = modul_names), y = N, fill = Modul)) +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = N), y = median(gesamt_frame$N), vjust = 1, size = 3, angle = 90) +
+    facet_wrap(~Entitaet)+
+    labs(title = "Fallanzahl nach Modul und Entität",
+         x = "Modul Name", y = "Anzahl") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r, echo=FALSE}
+### Anzahl nach Krebsregister
+all_folders <- list.dirs(OUTPUT_DIRECTORY, recursive = FALSE, full.names = FALSE)
+register_folder <- all_folders[grep("aicare-", all_folders)]
+
+read_outputs_register <- function(folder_name) {
+  
+  all_files <- list.files(paste0(OUTPUT_DIRECTORY, "/", folder_name), pattern = "\\.csv$")
+  modul_files <- all_files[all_files %in% paste0(modul_names, ".csv")]
+  modul_names <- substr(modul_files, 1, nchar(modul_files)-4)
+  
+  Ns <- c()
+  
+  for (i in 1:length(modul_files)) {
+  dta <- read.csv(paste0(OUTPUT_DIRECTORY, "/", folder_name, "/", modul_files[i]))
+  Nrows <- nrow(dta)
+  if (Nrows==1) {
+    if(colnames(dta)[1]=="V1") {
+      Nrows <- 0
+    }
+  }
+  Ns[i] <- Nrows
+  }
+  
+  return(data.frame(Register = folder_name,
+                    Modul = modul_names,
+                    N = Ns))
+}
+
+register_frame <- do.call("rbind", lapply(register_folder, read_outputs_register))
+
+```
+
+```{r echo=FALSE}
+if (!dir.exists(paste0(OUTPUT_DIRECTORY, "/Statistiken"))) {
+  dir.create(paste0(OUTPUT_DIRECTORY, "/Statistiken"))
+}
+
+write.csv(gesamt_frame, paste0(OUTPUT_DIRECTORY, "/Statistiken", "/", "Fallanzahl_nach_Entitaet.csv"))
+write.csv(register_frame, paste0(OUTPUT_DIRECTORY, "/Statistiken", "/", "Fallanzahl_nach_Register.csv"))
+```
+
+### Grafik: Fallanzahl nach Modul und Register
+
+```{r, echo=FALSE, fig.width=10, fig.height=10}
+
+ggplot(register_frame, aes(x = factor(Modul, level = modul_names), y = N, fill = Modul)) +
+       geom_bar(stat = "identity") +
+       geom_text(aes(label = N), y = median(register_frame$N), vjust = 1, size = 3, angle = 90) +
+       facet_wrap(~Register)+
+       labs(title = "Fallanzahl nach Modul und Register", x = "Modul Name", y = "Anzahl") +
+       theme_minimal() +
+       theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Statistiken zu den Transformationen und Entfernungen
+
+### Tabelle: Allgemeine Häufigkeiten
+
+In dieser Tabelle bezieht sich die Spalte "Alle_Faelle" auf die gesamte Anzahl an Einträgen, die auf der "halde.csv" zu finden sind. Diese Zahl ergibt sich aus allen Entfernungen (Spalte "Alle_Entferungen") sowie allen Transformationen (Spalte "Alle_Transformationen"). Da öfters dieselben Werte entfernt bzw. transformiert, zeigt die Tabelle zusätzlich die Anzahl der unterschiedlichen Häufigkeiten. Dazu gehören nur die einzigartigen Fälle aus den Spalten "variable", "auspraegung", und "status".
+```{r, echo=FALSE}
+
+halde <- read.csv(paste0(OUTPUT_DIRECTORY, "/halde.csv"))
+if (nrow(halde)>2){
+  halde_register <- halde[-1, c("register", "table", "variable", "auspraegung", "status")]
+  halde_register <- halde_register[!duplicated(halde_register), ]
+
+  N_all <- nrow(halde)-1
+  halde <- halde[-1, c("register", "table", "variable", "auspraegung", "status")]
+  N_all_deleted <- nrow(subset(halde, status=="deleted"))
+  N_all_mapped <- nrow(subset(halde, status=="mapped"))
+
+  halde$register <- "alle"
+  halde <- halde[!duplicated(halde), ]
+
+  halde$auspraegung[is.na(halde$auspraegung)] <- "NA"
+  halde_register$auspraegung[is.na(halde_register$auspraegung)] <- "NA"
+
+  summary_table_halde <- aggregate(register ~ auspraegung + status + variable, data = halde, FUN = length)
+  colnames(summary_table_halde)[colnames(summary_table_halde) == "register"] <- "count"
+
+  summary_table_var_gesamt <- aggregate(register ~ status + variable, data = halde, FUN = length)
+  colnames(summary_table_var_gesamt)[colnames(summary_table_var_gesamt) == "register"] <- "count"
+
+  halde_unique <- halde[,c("variable", "auspraegung", "status")]
+  halde_unique <- halde_unique[!duplicated(halde_unique), ] #keine doppelten Zeilen
+  N_unique <- nrow(halde_unique)
+  N_unique_deleted <- nrow(subset(halde_unique, status=="deleted"))
+  N_unique_mapped <- nrow(subset(halde_unique, status=="mapped"))
+
+  allgemein <- data.frame(Alle_Faelle = N_all,
+                          Alle_Entfernungen = N_all_deleted,
+                          Alle_Transformationen = N_all_mapped,
+                          Unterschiedliche_Faelle = N_unique,
+                          Unterschiedliche_Entfernungen = N_unique_deleted,
+                          Unterschiedliche_Transformationen = N_unique_mapped)
+
+
+  knitr::kable(allgemein)
+} else {
+  print("Leere Halde")
+}
+
+```
+
+```{r, echo=FALSE}
+# nach Register
+if (nrow(halde)>2){
+  register_list_var <- list()
+  register_list <- list()
+
+  for (i in 1:length(register_folder)) {
+    the_register <- register_folder[i]
+    summary_table_var <- aggregate(register ~ status + variable, data = subset(halde_register, register==the_register), FUN = length)
+    colnames(summary_table_var)[colnames(summary_table_var) == "register"] <- "count"
+    summary_table_var$register <- the_register
+    register_list_var[[i]] <- summary_table_var
+    
+    summary_table <- aggregate(register ~ auspraegung + status + variable, data = subset(halde_register, register==the_register),
+                              FUN = length)
+    colnames(summary_table)[colnames(summary_table) == "register"] <- "count"
+    summary_table$register <- the_register
+    register_list[[i]] <- summary_table
+  }
+
+
+  register_halde <- do.call("rbind", register_list)
+  register_halde_var <- do.call("rbind", register_list_var)
+
+  write.csv(allgemein, paste0(OUTPUT_DIRECTORY, "/Statistiken", "/", "Fallanzahl_nach_Entitaet.csv"))
+  write.csv(register_halde_var, paste0(OUTPUT_DIRECTORY, "/Statistiken", "/",  "Halde_Fallanzahl_Variablen_nach_Register.csv"))
+  write.csv(register_halde, paste0(OUTPUT_DIRECTORY, "/Statistiken", "/", "Halde_Fallanzahl_Detail_nach_Register.csv"))
+  write.csv(summary_table_var_gesamt,paste0(OUTPUT_DIRECTORY, "/Statistiken", "/", "Halde_Fallanzahl_Variablen.csv"))
+  write.csv(summary_table_halde, paste0(OUTPUT_DIRECTORY, "/Statistiken", "/",  "Halde_Fallanzahl_Detail.csv"))
+}
+
+```
+
+### Grafik: Anzahl der entfernten und transformierten Werte nach Variable
+
+```{r, echo=FALSE, fig.width=10, fig.height=15}
+if (nrow(halde)>2){
+  ggplot(summary_table_var_gesamt,
+        aes(x = variable, y = count, fill = status)) +
+        geom_bar(stat = "identity", position = "dodge") +
+        coord_flip()+
+        theme_minimal()+
+        labs(x = "Variable", y="Anzahl", fill = "Status", title = "Anzahl der nicht-konformen Werte")+
+        theme(axis.text.x=element_text(angle = 45, hjust=1))
+}
+```
+
+### Grafik: Anzahl der entfernten und transformierten Werte nach Variable und Register
+
+```{r, echo=FALSE, fig.width=10, fig.height=15}
+if (nrow(halde)>2){
+  for (reg in unique(register_halde_var$register)) {
+    
+    register_name <- paste("für Register:", toupper(gsub("aicare-", "", reg)))
+    
+    plot_halde2 <- ggplot(subset(register_halde_var, count>0 & register == reg),
+                          aes(x = variable, y = count, fill = status)) +
+                          geom_bar(stat = "identity", position = "dodge") +
+                          coord_flip() +
+                          theme_minimal() +
+                          labs(x = "Variable", y="Anzahl", fill = "Status", title = paste("Anzahl der nicht-konformen Werte", register_name)) +
+                          theme(axis.text.x=element_text(angle = 45, hjust=1))
+  
+    print(plot_halde2)
+  }
+}
+```

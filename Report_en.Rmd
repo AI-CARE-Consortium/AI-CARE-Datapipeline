@@ -1,0 +1,215 @@
+---
+title: "Pipeline Report"
+author: "AI-CARE Working Group"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Statistics on Output Data
+### Table: Number of Cases by Module and Entity
+
+```{r load_data, echo=FALSE, warnings = FALSE, message = FALSE}
+OUTPUT_DIRECTORY <- "Ausgabedaten"
+
+read_outputs <- function(file_name, subfolder=FALSE) {
+  if (subfolder==FALSE) {
+    path <- paste0(OUTPUT_DIRECTORY, "/gesamt/", file_name, ".csv")
+    entity <- "total"
+  } else {
+    path <- paste0(OUTPUT_DIRECTORY, "/gesamt/", subfolder, "/", subfolder, "_", file_name, ".csv")
+    entity <- subfolder
+  }
+  dta <- read.csv(path)
+  N <- nrow(dta)
+  if (N==1) {
+    if(colnames(dta)[1]=="V1") {
+      N <- 0
+    }
+  }
+  return(data.frame(Module = file_name, Entity = entity, N = N))
+}
+modul_names <- c("patient", "tumor", "modul_mamma", "op", "strahlentherapie", "systemtherapie", "fe")
+output_file_names <- list.files(paste0(OUTPUT_DIRECTORY, "/gesamt"), pattern = "\\.csv$")
+output_file_input <- substr(output_file_names, 1, nchar(output_file_names)-4)
+output_file_input <- output_file_input[output_file_input %in% modul_names]
+
+subfolders_found <- list.dirs(paste0(OUTPUT_DIRECTORY, "/gesamt"), recursive = FALSE, full.names = FALSE)
+subfolders_input <- subfolders_found[subfolders_found %in% c("C8", "C34", "C50", "C73")]
+
+output_total <- list()
+for (i in 1:length(as.list(c(FALSE, subfolders_input)))) {
+  subfolder <- as.list(c(FALSE, subfolders_input))[[i]]
+  output_total[[i]] <- lapply(output_file_input, read_outputs, subfolder = subfolder)
+}
+total_frame <- do.call(rbind, lapply(output_total, function(sublist) {do.call(rbind, sublist)}))
+total_frame_wide <- reshape(total_frame, idvar = "Module", timevar = "Entity", direction = "wide")
+colnames(total_frame_wide)[colnames(total_frame_wide) == "N.total"] <- "Total"
+colnames(total_frame_wide)[colnames(total_frame_wide) == "N.C34"] <- "Lung Cancer"
+colnames(total_frame_wide)[colnames(total_frame_wide) == "N.C50"] <- "Breast Cancer"
+colnames(total_frame_wide)[colnames(total_frame_wide) == "N.C73"] <- "Thyroid Cancer"
+colnames(total_frame_wide)[colnames(total_frame_wide) == "N.C8"] <- "Non-Hodgkin Lymphoma"
+
+knitr::kable(total_frame_wide)
+```
+
+### Plot: Number of Cases by Module and Entity
+
+```{r, echo=FALSE, fig.width=10, fig.height=6, warnings = FALSE, message = FALSE}
+suppressWarnings(library(ggplot2))
+total_frame$Entity[total_frame$Entity == "C34"] <- "Lung Cancer"
+total_frame$Entity[total_frame$Entity == "C50"] <- "Breast Cancer"
+total_frame$Entity[total_frame$Entity == "C73"] <- "Thyroid Cancer"
+total_frame$Entity[total_frame$Entity == "C8"] <- "Non-Hodgkin Lymphoma"
+total_frame$Entity[total_frame$Entity == "total"] <- "Total"
+
+ggplot(total_frame, aes(x = factor(Module, level = modul_names), y = N, fill = Module)) +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = N), y = median(total_frame$N), vjust = 1, size = 3, angle = 90) +
+    facet_wrap(~Entity)+
+    labs(title = "Number of Cases by Module and Entity",
+         x = "Module Name", y = "Count") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r, echo=FALSE}
+### Count by Cancer Registry
+all_folders <- list.dirs(OUTPUT_DIRECTORY, recursive = FALSE, full.names = FALSE)
+register_folder <- all_folders[grep("aicare-", all_folders)]
+
+read_outputs_register <- function(folder_name) {
+  all_files <- list.files(paste0(OUTPUT_DIRECTORY, "/", folder_name), pattern = "\\.csv$")
+  modul_files <- all_files[all_files %in% paste0(modul_names, ".csv")]
+  modul_names <- substr(modul_files, 1, nchar(modul_files)-4)
+  Ns <- c()
+  for (i in 1:length(modul_files)) {
+    dta <- read.csv(paste0(OUTPUT_DIRECTORY,"/", folder_name, "/", modul_files[i]))
+    Nrows <- nrow(dta)
+    if (Nrows==1) {
+      if(colnames(dta)[1]=="V1") {
+        Nrows <- 0
+      }
+    }
+    Ns[i] <- Nrows
+  }
+  return(data.frame(Registry = folder_name,
+                    Module = modul_names,
+                    N = Ns))
+}
+register_frame <- do.call("rbind", lapply(register_folder, read_outputs_register))
+```
+
+```{r echo=FALSE}
+if (!dir.exists(paste0(OUTPUT_DIRECTORY,"/Statistiken"))) {
+  dir.create(paste0(OUTPUT_DIRECTORY,"/Statistiken"))
+}
+write.csv(total_frame, paste0(OUTPUT_DIRECTORY, "/Statistiken", "/", "Cases_by_Entity.csv"))
+write.csv(register_frame, paste0(OUTPUT_DIRECTORY, "/Statistiken", "/", "Cases_by_Registry.csv"))
+```
+
+### Plot: Number of Cases by Module and Registry
+
+```{r, echo=FALSE, fig.width=10, fig.height=10}
+ggplot(register_frame, aes(x = factor(Module, level = modul_names), y = N, fill = Module)) +
+       geom_bar(stat = "identity") +
+       geom_text(aes(label = N), y = median(register_frame$N), vjust = 1, size = 3, angle = 90) +
+       facet_wrap(~Registry)+
+       labs(title = "Number of Cases by Module and Registry", x = "Module Name", y = "Count") +
+       theme_minimal() +
+       theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Statistics on Transformations and Removals
+
+### Table: General Frequencies
+
+In this table, the column "Total_Cases" refers to the total number of entries found in the log file. This number results from all removals (column "Total_Removals") as well as all transformations (column "Total_Removals"). Since the same values are often removed or transformed multiple times, the table additionally shows the number of unique frequencies.
+
+```{r, echo=FALSE}
+
+halde <- read.csv(paste0(OUTPUT_DIRECTORY, "/halde.csv"))
+if (nrow(halde)>2){
+  halde_register <- halde[-1, c("register", "table", "variable", "auspraegung", "status")]
+  halde_register <- halde_register[!duplicated(halde_register), ]
+
+  N_all <- nrow(halde)-1
+  halde <- halde[-1, c("register", "table", "variable", "auspraegung", "status")]
+  N_all_deleted <- nrow(subset(halde, status=="deleted"))
+  N_all_mapped <- nrow(subset(halde, status=="mapped"))
+
+  halde$register <- "all"
+  halde <- halde[!duplicated(halde), ]
+
+  halde$auspraegung[is.na(halde$auspraegung)] <- "NA"
+  halde_register$auspraegung[is.na(halde_register$auspraegung)] <- "NA"
+
+  summary_table_halde <- aggregate(register ~ auspraegung + status + variable, data = halde, FUN = length)
+  colnames(summary_table_halde)[colnames(summary_table_halde) == "register"] <- "count"
+
+  summary_table_var_total <- aggregate(register ~ status + variable, data = halde, FUN = length)
+  colnames(summary_table_var_total)[colnames(summary_table_var_total) == "register"] <- "count"
+
+  halde_unique <- halde[,c("variable", "auspraegung", "status")]
+  halde_unique <- halde_unique[!duplicated(halde_unique), ] #no duplicate rows
+  N_unique <- nrow(halde_unique)
+  N_unique_deleted <- nrow(subset(halde_unique, status=="deleted"))
+  N_unique_mapped <- nrow(subset(halde_unique, status=="mapped"))
+
+  summary_general <- data.frame(Total_Cases = N_all,
+                          Total_Removals = N_all_deleted,
+                          Total_Transformations = N_all_mapped,
+                          Unique_Cases = N_unique,
+                          Unique_Removals = N_unique_deleted,
+                          Unique_Transformations = N_unique_mapped)
+
+  knitr::kable(summary_general)
+} else{
+  print("Empty Log File!")
+}
+```
+
+```{r, echo=FALSE}
+if (nrow(halde)>2){
+  # by Registry
+  register_list_var <- list()
+  register_list <- list()
+  for (i in 1:length(register_folder)) {
+    the_registry <- register_folder[i]
+    summary_table_var <- aggregate(register ~ status + variable, data = subset(halde_register, register==the_registry), FUN = length)
+    colnames(summary_table_var)[colnames(summary_table_var) == "register"] <- "count"
+    summary_table_var$register <- the_registry
+    register_list_var[[i]] <- summary_table_var
+    summary_table <- aggregate(register ~ auspraegung + status + variable, data = subset(halde_register, register==the_registry),
+                              FUN = length)
+    colnames(summary_table)[colnames(summary_table) == "register"] <- "count"
+    summary_table$register <- the_registry
+    register_list[[i]] <- summary_table
+  }
+  register_halde <- do.call("rbind", register_list)
+  register_halde_var <- do.call("rbind", register_list_var)
+
+  write.csv(summary_general, paste0(OUTPUT_DIRECTORY,"/Statistiken", "/", "Cases_by_Entity.csv"))
+  write.csv(register_halde_var, paste0(OUTPUT_DIRECTORY,"/Statistiken", "/",  "Halde_Case_Count_Variables_by_Registry.csv"))
+  write.csv(register_halde, paste0(OUTPUT_DIRECTORY, "/Statistiken", "/", "Halde_Case_Count_Detail_by_Registry.csv"))
+  write.csv(summary_table_var_total,paste0(OUTPUT_DIRECTORY, "/Statistiken", "/", "Halde_Case_Count_Variables.csv"))
+  write.csv(summary_table_halde, paste0(OUTPUT_DIRECTORY, "/Statistiken", "/",  "Halde_Case_Count_Detail.csv"))
+}
+```
+
+### Plot: Number of Removed and Transformed Values by Variable
+
+```{r, echo=FALSE, fig.width=10, fig.height=15}
+if (nrow(halde)>2){
+  ggplot(summary_table_var_total,
+        aes(x = variable, y = count, fill = status)) +
+        geom_bar(stat = "identity", position = "dodge") +
+        coord_flip()+
+        theme_minimal()+
+        labs(x = "Variable", y="Count", fill = "Status", title = "Number of Non-conforming Values")+
+        theme(axis.text.x=element_text(angle = 45, hjust=1))
+}
+```
