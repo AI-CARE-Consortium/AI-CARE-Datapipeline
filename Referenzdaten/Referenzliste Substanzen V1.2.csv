@@ -429,7 +429,7 @@ HO;Exemestan;Exemestan;Aromasin;ja;Endokrine Therapie;Aromatasehemmer;L02BG06
 SO;Fentanyl;Fentanyl;;nein;Supportiv;Analgetikum;N02AB03
 SO;Filgrastim;Filgrastim;Neupogen;nein;Supportiv;Sonstiges Supportivum;L03AA02
 SO;Neupogen;Filgrastim;Neupogen;nein;Supportiv;Sonstiges Supportivum;L03AA02
-HO;Alof?n;Finasterid;Prosmin, Propecia, Crinormin, Alof?n, Androfin, FinaHAIR, Finascar, Finural, Prezepa, Finasterax, Finastad, Finamed, Proscar ;ja;Endokrine Therapie;Sonstige endokrine Therapie;G04CB01
+HO;Alofin;Finasterid;Prosmin, Propecia, Crinormin, Alof?n, Androfin, FinaHAIR, Finascar, Finural, Prezepa, Finasterax, Finastad, Finamed, Proscar ;ja;Endokrine Therapie;Sonstige endokrine Therapie;G04CB01
 HO;Androfin;Finasterid;Prosmin, Propecia, Crinormin, Alof?n, Androfin, FinaHAIR, Finascar, Finural, Prezepa, Finasterax, Finastad, Finamed, Proscar ;ja;Endokrine Therapie;Sonstige endokrine Therapie;G04CB01
 HO;Crinormin;Finasterid;Prosmin, Propecia, Crinormin, Alof?n, Androfin, FinaHAIR, Finascar, Finural, Prezepa, Finasterax, Finastad, Finamed, Proscar ;ja;Endokrine Therapie;Sonstige endokrine Therapie;G04CB01
 HO;FinaHAIR;Finasterid;Prosmin, Propecia, Crinormin, Alof?n, Androfin, FinaHAIR, Finascar, Finural, Prezepa, Finasterax, Finastad, Finamed, Proscar ;ja;Endokrine Therapie;Sonstige endokrine Therapie;G04CB01
@@ -1027,7 +1027,7 @@ CH;Teniposid;Teniposid;Vumon;ja;Zytostatikum;Topoisom.-Inhibitor;L01CB02 
 CH;Vumon;Teniposid;Vumon;ja;Zytostatikum;Topoisom.-Inhibitor;L01CB02 
 SO;Tenofovir;Tenofovir;Viread;nein;Supportiv;Sonstiges Supportivum;J05AF07, J05AF13
 SO;Viread;Tenofovir;Viread;nein;Supportiv;Sonstiges Supportivum;J05AF07, J05AF13
-ZS;?-Phthalimidoglutarimid;Thalidomid;Thalidomide, Thalidomide Celgene, ?-Phthalimidoglutarimid;ja;Anderes antineoplastisches Mittel;Sonstige zielgerichtete Substanz;L04AX02
+ZS;Phthalimidoglutarimid;Thalidomid;Thalidomide, Thalidomide Celgene, ?-Phthalimidoglutarimid;ja;Anderes antineoplastisches Mittel;Sonstige zielgerichtete Substanz;L04AX02
 ZS;Thalidomid;Thalidomid;Thalidomide, Thalidomide Celgene, ?-Phthalimidoglutarimid;ja;Anderes antineoplastisches Mittel;Sonstige zielgerichtete Substanz;L04AX02
 ZS;Thalidomide;Thalidomid;Thalidomide, Thalidomide Celgene, ?-Phthalimidoglutarimid;ja;Anderes antineoplastisches Mittel;Sonstige zielgerichtete Substanz;L04AX02
 ZS;Thalidomide Celgene;Thalidomid;Thalidomide, Thalidomide Celgene, ?-Phthalimidoglutarimid;ja;Anderes antineoplastisches Mittel;Sonstige zielgerichtete Substanz;L04AX02
