@@ -32,7 +32,7 @@ remove_words <- function(input_data) {
   
   formatted_regex <-  paste0("(?i)", words_to_remove, collapse = "|")
   output_string <- str_squish(str_remove_all(removed_expressions, formatted_regex))  
-  output_string <- gsub("[^a-zA-Z0-9 ]", "", output_string, perl = TRUE)
+#  output_string <- gsub("[^a-zA-Z0-9 ]", "", output_string, perl = TRUE)
   
   
   return(output_string)
@@ -75,6 +75,15 @@ find_Paclitaxel <- function(input_string) {
   
 }
 
+find_carboplatin <- function(input_string) {
+  
+  if (str_detect(input_string, regex("\\bCarboplat\\b", ignore_case=TRUE))) {
+    return("Carboplatin")
+  }
+    
+  return(input_string)
+}
+
 replace_SZT <- function(input_string) {
   if (str_detect(input_string, regex("\\bSZT\\b",
                                  ignore_case = TRUE))){
@@ -86,15 +95,16 @@ replace_SZT <- function(input_string) {
 
 remove_short_words <- function(input_string) {
   
-  string_length <- nchar(input_string)
+  if (is.na(input_string)) return(NA)
   
-  if (string_length < 3) {
-    output_string <- NA
-  } else {
-    output_string <- input_string
-  }
-  return(output_string)
+  cleaned <- trimws(input_string)
+  
+  if (nchar(cleaned) < 3) return(NA)
+  if (tolower(cleaned) %in% c("k a", "ka", "k.a", "k.a.", "n a", "na")) return(NA)
+  
+  cleaned
 }
+
 
 remove_duplicates <- function(text) {
   
@@ -106,10 +116,14 @@ remove_duplicates <- function(text) {
 
 preprocess_text <- function(input_string) {
   
-  processed_5FU <- find_5FU(input_string)
+  remove_dots <- gsub(".", "", input_string, fixed = TRUE)
+  remove_slash <- gsub("/", "", remove_dots, fixed = TRUE)
+  
+  processed_5FU <- find_5FU(remove_slash)
   processed_BSC <- find_BSC(processed_5FU)
   processed_paclitaxel <- find_Paclitaxel(processed_BSC)
-  translated_SZT <- replace_SZT(processed_paclitaxel)
+  processed_carbo <- find_carboplatin(processed_paclitaxel)
+  translated_SZT <- replace_SZT(processed_carbo)
   processed_remove_words <- remove_words(translated_SZT)
   processed_remove_short_words <- remove_short_words(processed_remove_words)
   processed_removed_duplicates <- remove_duplicates(processed_remove_short_words)
@@ -137,91 +151,91 @@ find_perfect_match <- function(preprocessed_text, reference_table) {
 
 find_detected_match <- function(preprocessed_text, reference_table) {
   
-  if (preprocessed_text == "") {
-    return("")
+  if (!nzchar(preprocessed_text)) return("")
+  
+  txt <- tolower(preprocessed_text)
+  
+  substance_patterns <- paste0("(?<!\\w)", 
+                               gsub("([-.+*?^$(){}|\\[\\]\\\\])", "\\\\\\1", 
+                                    reference_table$Substanz_lower),
+                               "(?!\\w)")
+  
+  hits <- reference_table$Substanz[
+    sapply(substance_patterns, function(pattern) {
+      str_detect(txt, regex(pattern, ignore_case = TRUE))
+    })
+  ]
+  
+  if (length(hits) == 1) return(hits)
+  if (length(hits) > 1) {
+    d <- adist(txt, tolower(hits))
+    return(hits[which.min(d)])
   }
   
-  match_substance <- reference_table$Substanz[str_detect(tolower(reference_table$Substanz_lower), fixed(tolower(preprocessed_text)))]
-  
-  if (length(match_substance) == 1) {
-    return(match_substance)
-  }
-  
-  if(length(match_substance) > 1) {
-    distances <- adist(preprocessed_text, match_substance)
-    return(match_substance[which.min(distances)])
-  }
-  
-  match_synonym <- reference_table$Substanz[str_detect(tolower(reference_table$Synonym), fixed(tolower(preprocessed_text)))]
-  
-  if (length(match_synonym) == 1) {
-    return(match_synonym)
-  }
-  
-  if(length(match_synonym) > 1) {
-    distances <- adist(preprocessed_text, match_synonym)
-    return(match_synonym[which.min(distances)])
+
+  if ("Synonym" %in% colnames(reference_table)) {
+    valid_synonyms <- !is.na(reference_table$Synonym) & nzchar(reference_table$Synonym)
+    
+    if (any(valid_synonyms)) {
+      synonym_patterns <- paste0("(?<!\\w)", 
+                                 gsub("([-.+*?^$(){}|\\[\\]\\\\])", "\\\\\\1", 
+                                      tolower(reference_table$Synonym[valid_synonyms])),
+                                 "(?!\\w)")
+      
+      syn_hits <- reference_table$Substanz[valid_synonyms][
+        sapply(synonym_patterns, function(pattern) {
+          str_detect(txt, regex(pattern, ignore_case = TRUE))
+        })
+      ]
+      
+      if (length(syn_hits) == 1) return(syn_hits)
+      if (length(syn_hits) > 1) {
+        d <- adist(txt, tolower(syn_hits))
+        return(syn_hits[which.min(d)])
+      }
+    }
   }
   
   return("")
 }
 
-get_relative_distance <- function(splitted_input, match) {
-  
-  distance <- adist(match, splitted_input)
-  max_length <- pmax(nchar(splitted_input), nchar(match))
-  similarity <- 1 - (distance / max_length)
-  
-  return(max(similarity))
-}
-
 find_fuzzy_match <- function(preprocessed_text, reference_table) {
   
-  fuzzy_match <- reference_table$Substanz[adist(tolower(preprocessed_text), 
-                                                tolower(reference_table$Substanz)) <= 2]
+  txt <- trimws(tolower(preprocessed_text))
   
-  if (length(fuzzy_match) == 1) {
-    rel_dist <- get_relative_distance(tolower(preprocessed_text),
-                                      tolower(fuzzy_match))
-    if (rel_dist < 0.8) {
-      fuzzy_match <- ""
-    }
-    return(fuzzy_match)
+  if (nchar(txt) < 3) return("")
+  if (grepl("^[a-z]{1,3}$", txt)) return("")   # short abbreviations
+  
+  idx <- agrep(
+    pattern = paste0("^",stringr::str_escape(txt), "$"),
+    x = tolower(reference_table$Substanz),
+    max.distance = list(all = 0.2),
+    ignore.case = TRUE
+  )
+  
+  if (length(idx) == 1) {
+    return(reference_table$Substanz[idx])
   }
   
-  if(length(fuzzy_match) > 1) {
-    distances <- adist(preprocessed_text, fuzzy_match)
-    fuzzy_match <- fuzzy_match[which.min(distances)][1]
-    
-    rel_dist <- get_relative_distance(tolower(preprocessed_text),
-                                      tolower(fuzzy_match))
-    if (rel_dist < 0.8) {
-      fuzzy_match <- ""
-    }
-    return(fuzzy_match)
+  if (length(idx) > 1) {
+    d <- adist(txt, tolower(reference_table$Substanz[idx]))
+    return(reference_table$Substanz[idx[which.min(d)]])
   }
   
-  fuzzy_match_synonym <- reference_table$Substanz[adist(tolower(preprocessed_text), 
-                                                        tolower(reference_table$Synonym)) <= 2]
+  idx_syn <- agrep(
+    pattern = paste0("^",stringr::str_escape(txt), "$"),
+    x = tolower(reference_table$Synonym),
+    max.distance = list(all = 0.2),
+    ignore.case = TRUE
+  )
   
-  if (length(fuzzy_match_synonym) == 1) {
-    rel_dist <- get_relative_distance(tolower(preprocessed_text),
-                                      tolower(fuzzy_match_synonym))
-    if (rel_dist < 0.8) {
-      fuzzy_match_synonym <- ""
-    }
-    return(fuzzy_match_synonym)
+  if (length(idx_syn) == 1) {
+    return(reference_table$Substanz[idx_syn])
   }
   
-  if(length(fuzzy_match_synonym) > 1) {
-    distances <- adist(preprocessed_text, fuzzy_match_synonym)
-    fuzzy_match_synonym <- fuzzy_match_synonym[which.min(distances)][1]
-    rel_dist <- get_relative_distance(tolower(preprocessed_text),
-                                      tolower(fuzzy_match_synonym))
-    if (rel_dist < 0.8) {
-      fuzzy_match_synonym <- ""
-    }
-    return(fuzzy_match_synonym)
+  if (length(idx_syn) > 1) {
+    d <- adist(txt, tolower(reference_table$Synonym[idx_syn]))
+    return(reference_table$Substanz[idx_syn[which.min(d)]])
   }
   
   return("")
@@ -231,26 +245,17 @@ get_match <- function(preprocessed_text, reference_table) {
   
   preprocessed_text <- trimws(preprocessed_text)
   
-  match_perfect <- find_detected_match(preprocessed_text, reference_table)
+  if (is.na(preprocessed_text)) return(NA)
+  if (nchar(preprocessed_text) < 3) return(NA)
+  if (tolower(preprocessed_text) %in% c("k a", "ka", "k.a", "k.a.", "n a", "na")) return(NA)
   
-  if (nzchar(match_perfect)) {
-    return(match_perfect)
-  } 
+  match_detect <- find_detected_match(preprocessed_text, reference_table)
+  if (nzchar(match_detect)) return(match_detect)
   
- 
-  #match_detect <-  find_detected_match(preprocessed_text, reference_table) 
-  #
-  #if (nzchar(match_detect)) {
-  #  return(match_detect)
-  #}
+  match_fuzzy <- find_fuzzy_match(preprocessed_text, reference_table)
+  if (nzchar(match_fuzzy)) return(match_fuzzy)
   
-  match_fuzzy <-  find_fuzzy_match(preprocessed_text, reference_table) 
-  
-  if (nzchar(match_fuzzy)) {
-    return(match_fuzzy)
-  }
-  
-  return("")
+  return(NA)
 }
 
 

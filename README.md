@@ -40,11 +40,11 @@ Afterwards, the container could be run with `docker run --rm --mount type=bind,s
 Install R and BaseX on your machine and start both applications to finish their setups. Download the folders and scripts provided here and place the XML-file in the format of the ZfKD-reporting data set in the input directory (Rohdaten). 
 
 #### Executing the pipeline via scripts
-Open R and define the folder containing the scripts as the working directory (`setwd()`). Execute the R-script called "Rahmenskript" which will initiate the data processing via BaseX and the other R-scripts.
+Open R and define the folder containing the scripts as the working directory (`setwd()`). Execute the R-script called "Framework.R" which will initiate the data processing via BaseX and the other R-scripts.
 
 ## Background information
 ### Reference data
-The reference data should be provided in csv-tables. For reference data of the type "Reference" or "Multiple (Menge)", the csv-table should be comma-separated with the valid expressions in the first column.
+The reference data should be provided in csv-tables. For reference data of the type "Reference" or "Set (Menge)", the csv-table should be comma-separated with the valid expressions in the first column.
 ### Reference data allignment methods
 The pipeline utilizes different approaches to compare the data of interest to the reference data. 
 #### Reference:

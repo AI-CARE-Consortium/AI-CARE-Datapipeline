@@ -14,16 +14,19 @@ ATC_refs <- read.csv2("./Referenzdaten/substanz_UTF8.csv", encoding = "UTF-8")
 Substanzkatalog <- read.csv2("./Referenzdaten/Referenzliste Substanzen V1.2.csv", encoding = "UTF-8")
 Substanzkatalog$Substanz <- Substanzkatalog$Substanzname
 Substanzkatalog$Substanz_lower <- tolower(Substanzkatalog$Substanz)
-Substanzkatalog$Synonym <- Substanzkatalog$Weitere_Bezeichnung
+Substanzkatalog$Synonym <- Substanzkatalog$Bezeichnung
 atc_codes <- c(ATC_refs$Code, Substanzkatalog$ATC_Kode)
 atc_names <- c(ATC_refs$Substanz, Substanzkatalog$Substanz)
 atc_class <- c(ATC_refs$Therapieart, Substanzkatalog$Therapieart)
 combined_ATC <- unique(tibble(atc_class, atc_names, atc_codes))
 names(combined_ATC) <- c("Therapieart", "Substanz", "Code")
 
-dta <- read.csv(paste0(OUTPUT_DIRECTORY,"/gesamt/", "systemtherapie.csv"))[,c("SYST_ID", "Register_ID_FK", "Patient_ID_FK", "Tumor_ID_FK", "Substanzen")]
+dta <- read.csv(paste0(OUTPUT_DIRECTORY,"/gesamt/", "systemtherapie.csv"),
+                encoding = "UTF-8")[,c("SYST_ID", "Register_ID_FK", "Patient_ID_FK", "Tumor_ID_FK", "Substanzen")]
+
+
 dta$Merge_ID <- 1:nrow(dta)
-dta_no_NA <- as_tibble(subset(dta, !is.na(Substanzen) & trimws(Substanzen) != ""))
+dta_no_NA <- subset(dta, !is.na(Substanzen) & trimws(Substanzen) != "")
 
 # check whether df column Substanzen is solely NA. In this case, Substanzen_extracted will be NA as well
 if (dim(dta_no_NA)[1] == 0) {
@@ -36,7 +39,8 @@ if (dim(dta_no_NA)[1] == 0) {
 
 #   # code relies on tidyverse if available but falls back to base R if tidyverse is not installed
   if (FALSE) { #tidyverse_support) {
-
+    
+    dta_no_NA <- as_tibble(subset(dta, !is.na(Substanzen) & trimws(Substanzen) != ""))
     dta_split <- dta_no_NA %>% 
       mutate(Substanzen = trimws(Substanzen)) %>%
       separate_longer_delim(Substanzen, delim = regex("\\s*[,;]\\s*")) #%>%
@@ -91,26 +95,30 @@ if (dim(dta_no_NA)[1] == 0) {
     }
 
   #   #aggregieren
-    substance_service <- aggregate(Substanzen_extracted ~ Merge_ID,
-                                   data = dta_split, FUN = function(x) {
-                                     valid <- x[!is.na(x) & trimws(x) != ""]
-                                     if (length(valid) > 0) {
-                                       paste(unique(valid), collapse = ";")
-                                     } else {
-                                       NA
-                                     }
-                                   })
+    substance_service <- aggregate(
+      Substanzen_extracted ~ Merge_ID,
+      data = dta_split,
+      FUN = function(x) {
+        valid <- x[!is.na(x) & trimws(x) != ""]
+        if (length(valid) > 0) {
+          paste(unique(valid), collapse = ";")
+        } else {
+          NA_character_
+        }
+      },
+      na.action = na.pass
+    )
   }
   
-  #merge wieder mit Ausgangsdatensatz "dta"
-  dta_out <- merge(dta, substance_service, by = "Merge_ID", all.x = TRUE)
-  dta_out <- merge(dta, dta_out)
-  dta_out <- dta_out[order(dta_out$Merge_ID), ]
- 
-  if (!(nrow(dta_no_NA) == nrow(substance_service) && nrow(dta_out) == nrow(dta))) {
-    warning("merge in substance extraction script did not work!")
-  }
-  
+    #merge wieder mit Ausgangsdatensatz "dta"
+    dta_out <- merge(dta, substance_service, by = "Merge_ID", all.x = TRUE)
+    #dta_out <- merge(dta, dta_out)
+    dta_out <- dta_out[order(dta_out$Merge_ID), ]
+    
+    if (!(nrow(dta_no_NA) == nrow(substance_service) && nrow(dta_out) == nrow(dta))) {
+      warning("merge in substance extraction script did not work!")
+    }
+    
   #output speichern
   write.csv(dta_out, paste0(OUTPUT_DIRECTORY,"/gesamt/", "systemtherapie_with_substance_service_variable.csv"), row.names=FALSE)
   
@@ -140,4 +148,5 @@ if (dim(dta_no_NA)[1] == 0) {
   write.csv(sub_halde, paste0(OUTPUT_DIRECTORY,"/gesamt/", "Substanzen_Transformationen_NichtGefunden.csv"),
             row.names = FALSE)
   
-}
+  }
+  
