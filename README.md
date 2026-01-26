@@ -70,3 +70,12 @@ For each value, the following information are present in the log:
 
 For the registry-internal quality control, this log file exists in its complete extent.
 For different other applications, such as the pure management of flawed values in the log file, multiple variants with a reduced number of colums is produced.
+
+## License
+This work is licensed under a
+[Creative Commons Attribution-NonCommercial 4.0 International License][cc-by-nc].
+
+[![CC BY-NC 4.0][cc-by-nc-image]][cc-by-nc]
+
+[cc-by-nc]: https://creativecommons.org/licenses/by-nc/4.0/
+[cc-by-nc-image]: https://licensebuttons.net/l/by-nc/4.0/88x31.png
