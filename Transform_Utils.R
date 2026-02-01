@@ -85,7 +85,7 @@ if(temp.variable %in% c("Menge_OPS_code", "Menge_FM", "Primaerdiagnose_Menge_FM"
 
         # Findet sich die Einzelangabe auf mindestens einer Angabe der Referenztabelle wieder?
         # Does the current element fit as a pattern to at least one element of the reference data?
-        if (length(grep(pattern = curr_code, x = referenz_tabelle[,1]))>0){
+        if (curr_code %in% referenz_tabelle[,1]){
           # Erweitere die temporaere Tabelle der positiven (passenden) Werte um die aktuelle Einzelangabe
           # Append the temporary table of fitting values by this element
           temp.data.menge.positiv <- c(temp.data.menge.positiv, curr_code)
