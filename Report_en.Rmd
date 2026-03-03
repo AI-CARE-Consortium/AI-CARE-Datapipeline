@@ -13,8 +13,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Table: Number of Cases by Module and Entity
 
 ```{r load_data, echo=FALSE, warnings = FALSE, message = FALSE}
-OUTPUT_DIRECTORY <- "Ausgabedaten"
+OUTPUT_DIRECTORY <- "/home/germer/Decrypt/Ausgabedaten02_26"
 
+file_name_translation <- c(
+  "patient" = "Patient",
+  "tumor" = "Tumor",
+  "fe" = "Follow-Up Event",
+  "modul_mamma" = "Mamma-Ca Module",
+  "op" = "Surgery",
+  "strahlentherapie" = "Radiation Therapy",
+  "systemtherapie" = "Medicinal Therapy"
+)
 read_outputs <- function(file_name, subfolder=FALSE) {
   if (subfolder==FALSE) {
     path <- paste0(OUTPUT_DIRECTORY, "/gesamt/", file_name, ".csv")
@@ -30,12 +39,13 @@ read_outputs <- function(file_name, subfolder=FALSE) {
       N <- 0
     }
   }
-  return(data.frame(Module = file_name, Entity = entity, N = N))
+  return(data.frame(Module = file_name_translation[[file_name]], Entity = entity, N = N))
 }
 modul_names <- c("patient", "tumor", "modul_mamma", "op", "strahlentherapie", "systemtherapie", "fe")
-output_file_names <- list.files(paste0(OUTPUT_DIRECTORY, "/gesamt"), pattern = "\\.csv$")
-output_file_input <- substr(output_file_names, 1, nchar(output_file_names)-4)
-output_file_input <- output_file_input[output_file_input %in% modul_names]
+modul_names_en <- c("Patient","Tumor","Mamma-Ca Module","Surgery","Radiation Therapy","Medicinal Therapy", "Follow-Up Event")
+#output_file_names <- list.files(paste0(OUTPUT_DIRECTORY, "/gesamt"), pattern = "\\.csv$")
+#output_file_input <- substr(output_file_names, 1, nchar(output_file_names)-4)
+output_file_input <- modul_names #output_file_input[output_file_input %in% modul_names]
 
 subfolders_found <- list.dirs(paste0(OUTPUT_DIRECTORY, "/gesamt"), recursive = FALSE, full.names = FALSE)
 subfolders_input <- subfolders_found[subfolders_found %in% c("C8", "C34", "C50", "C73")]
@@ -66,14 +76,15 @@ total_frame$Entity[total_frame$Entity == "C73"] <- "Thyroid Cancer"
 total_frame$Entity[total_frame$Entity == "C8"] <- "Non-Hodgkin Lymphoma"
 total_frame$Entity[total_frame$Entity == "total"] <- "Total"
 
-ggplot(total_frame, aes(x = factor(Module, level = modul_names), y = N, fill = Module)) +
+ggplot(total_frame, aes(x = factor(Module, level = modul_names_en, ordered=TRUE), y = N, fill = Module)) +
     geom_bar(stat = "identity") +
     geom_text(aes(label = N), y = median(total_frame$N), vjust = 1, size = 3, angle = 90) +
     facet_wrap(~Entity)+
     labs(title = "Number of Cases by Module and Entity",
          x = "Module Name", y = "Count") +
     theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    scale_fill_discrete(breaks = modul_names_en)
 ```
 
 ```{r, echo=FALSE}
@@ -83,11 +94,11 @@ register_folder <- all_folders[grep("aicare-", all_folders)]
 
 read_outputs_register <- function(folder_name) {
   all_files <- list.files(paste0(OUTPUT_DIRECTORY, "/", folder_name), pattern = "\\.csv$")
-  modul_files <- all_files[all_files %in% paste0(modul_names, ".csv")]
-  modul_names <- substr(modul_files, 1, nchar(modul_files)-4)
+  #modul_files <- all_files[all_files %in% paste0(modul_names, ".csv")]
+  #modul_names <- substr(modul_files, 1, nchar(modul_files)-4)
   Ns <- c()
-  for (i in 1:length(modul_files)) {
-    dta <- read.csv(paste0(OUTPUT_DIRECTORY,"/", folder_name, "/", modul_files[i]))
+  for (i in 1:length(modul_names)) {
+    dta <- read.csv(paste0(OUTPUT_DIRECTORY,"/", folder_name, "/", modul_names[i], ".csv"))
     Nrows <- nrow(dta)
     if (Nrows==1) {
       if(colnames(dta)[1]=="V1") {
@@ -97,7 +108,7 @@ read_outputs_register <- function(folder_name) {
     Ns[i] <- Nrows
   }
   return(data.frame(Registry = folder_name,
-                    Module = modul_names,
+                    Module = unname(file_name_translation[modul_names]),
                     N = Ns))
 }
 register_frame <- do.call("rbind", lapply(register_folder, read_outputs_register))
@@ -114,13 +125,15 @@ write.csv(register_frame, paste0(OUTPUT_DIRECTORY, "/Statistiken", "/", "Cases_b
 ### Plot: Number of Cases by Module and Registry
 
 ```{r, echo=FALSE, fig.width=10, fig.height=10}
-ggplot(register_frame, aes(x = factor(Module, level = modul_names), y = N, fill = Module)) +
+ggplot(register_frame, aes(x = factor(Module, level = modul_names_en), y = N, fill = Module)) +
        geom_bar(stat = "identity") +
        geom_text(aes(label = N), y = median(register_frame$N), vjust = 1, size = 3, angle = 90) +
        facet_wrap(~Registry)+
        labs(title = "Number of Cases by Module and Registry", x = "Module Name", y = "Count") +
        theme_minimal() +
-       theme(axis.text.x = element_text(angle = 45, hjust = 1))
+       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+       scale_fill_discrete(breaks = modul_names_en)
+
 ```
 
 ## Statistics on Transformations and Removals
@@ -129,6 +142,7 @@ ggplot(register_frame, aes(x = factor(Module, level = modul_names), y = N, fill 
 
 In this table, the column "Total_Cases" refers to the total number of entries found in the log file. This number results from all removals (column "Total_Removals") as well as all transformations (column "Total_Removals"). Since the same values are often removed or transformed multiple times, the table additionally shows the number of unique frequencies.
 
+\tiny
 ```{r, echo=FALSE}
 
 halde <- read.csv(paste0(OUTPUT_DIRECTORY, "/halde.csv"))
@@ -166,11 +180,12 @@ if (nrow(halde)>2){
                           Unique_Removals = N_unique_deleted,
                           Unique_Transformations = N_unique_mapped)
 
-  knitr::kable(summary_general)
+  knitr::kable(summary_general) 
 } else{
   print("Empty Log File!")
 }
 ```
+\normalsize
 
 ```{r, echo=FALSE}
 if (nrow(halde)>2){
@@ -200,9 +215,9 @@ if (nrow(halde)>2){
 }
 ```
 
-### Plot: Number of Removed and Transformed Values by Variable
+### Plot: Number of Unique Removed and Transformed Values by Variable
 
-```{r, echo=FALSE, fig.width=10, fig.height=15}
+```{r, echo=FALSE, fig.width=10, fig.height=14}
 if (nrow(halde)>2){
   ggplot(summary_table_var_total,
         aes(x = variable, y = count, fill = status)) +
