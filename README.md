@@ -1,4 +1,4 @@
-# AI-CARE Data pipeline
+# AI-CARE Data Pipeline
 A pipeline to transfer ZfKD data across cancer registries into a standardized format.
 ## Further information and citation
 If you want to know more, have a look at our [preprint](https://doi.org/10.2139/ssrn.5722854). If you use this data pipeline in your work, please cite it in the following way:
@@ -72,10 +72,4 @@ For the registry-internal quality control, this log file exists in its complete 
 For different other applications, such as the pure management of flawed values in the log file, multiple variants with a reduced number of colums is produced.
 
 ## License
-This work is licensed under a
-[Creative Commons Attribution-NonCommercial 4.0 International License][cc-by-nc].
-
-[![CC BY-NC 4.0][cc-by-nc-image]][cc-by-nc]
-
-[cc-by-nc]: https://creativecommons.org/licenses/by-nc/4.0/
-[cc-by-nc-image]: https://licensebuttons.net/l/by-nc/4.0/88x31.png
+This work is licensed under MIT License.
