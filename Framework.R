@@ -231,7 +231,7 @@ if (requireNamespace("rmarkdown", quietly = TRUE)) {
     rmarkdown::render("Report.Rmd", knit_root_dir = getwd())
     file.copy("Report.html", "Ausgabedaten/Report.html", overwrite = TRUE)
     if (requireNamespace("tinytex", quietly = TRUE)) {
-      tinytex::install_tinytex()
+      tinytex::install_tinytex(bundle = 'TinyTeX')
       rmarkdown::render("Report_en.Rmd", knit_root_dir = getwd())
       
       file.copy("Report_en.pdf", "Ausgabedaten/Report_en.pdf", overwrite = TRUE)

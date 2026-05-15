@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Table: Number of Cases by Module and Entity
 
 ```{r load_data, echo=FALSE, warnings = FALSE, message = FALSE}
-OUTPUT_DIRECTORY <- "/home/germer/Decrypt/Ausgabedaten02_26"
+OUTPUT_DIRECTORY <- "Ausgabedaten"
 
 file_name_translation <- c(
   "patient" = "Patient",

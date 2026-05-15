@@ -270,8 +270,8 @@ get_ATC_code <- function(preprocessed_text, reference_table_ATC) {
 
   safe_pattern <- trimws(gsub("\\d{4}$", "", safe_pattern, perl = TRUE))
   
-  match_substance <- reference_table_ATC$Substanz[
-    str_detect(tolower(reference_table_ATC$Code), safe_pattern)
+  match_substance <- reference_table_ATC$substanz[
+    str_detect(tolower(reference_table_ATC$code), safe_pattern)
   ]
   if(length(match_substance) == 1) return(match_substance)
   if(length(match_substance) > 1) return(match_substance[1])

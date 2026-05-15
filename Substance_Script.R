@@ -8,16 +8,18 @@ if(requireNamespace("stringr", quietly=TRUE) & requireNamespace("tidyr", quietly
 
 source("./Substance_Utils.R", encoding = "UTF-8")
 # subset the ATC codes to cancer-related codes only for more speed
-ATC_refs <- read.csv2("./Referenzdaten/substanz_UTF8.csv", encoding = "UTF-8")
+ATC_refs <- read.csv("./Referenzdaten-Latest/substanz.csv", encoding = "UTF-8")
+
+names(ATC_refs) <- tolower(names(ATC_refs))
 #colnames(ATC_refs) <- c("Substanz", "Code", "Therapieart")
 
-Substanzkatalog <- read.csv2("./Referenzdaten/Referenzliste Substanzen V1.2.csv", encoding = "UTF-8")
+Substanzkatalog <- read.csv2("./Referenzdaten-Latest/ReferenzlisteSubstanzenV1.2.csv", encoding = "UTF-8")
 Substanzkatalog$Substanz <- Substanzkatalog$Substanzname
 Substanzkatalog$Substanz_lower <- tolower(Substanzkatalog$Substanz)
 Substanzkatalog$Synonym <- Substanzkatalog$Bezeichnung
-atc_codes <- c(ATC_refs$Code, Substanzkatalog$ATC_Kode)
-atc_names <- c(ATC_refs$Substanz, Substanzkatalog$Substanz)
-atc_class <- c(ATC_refs$Therapieart, Substanzkatalog$Therapieart)
+atc_codes <- c(ATC_refs$code, Substanzkatalog$ATC_Kode)
+atc_names <- c(ATC_refs$substanz, Substanzkatalog$Substanz)
+atc_class <- c(ATC_refs$therapieart, Substanzkatalog$Therapieart)
 combined_ATC <- unique(tibble(atc_class, atc_names, atc_codes))
 names(combined_ATC) <- c("Therapieart", "Substanz", "Code")
 

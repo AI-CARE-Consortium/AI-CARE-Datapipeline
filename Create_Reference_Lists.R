@@ -16,9 +16,9 @@ download_data <- function(mapping){
     
     print(localname)
     if(rki_name != ""){
-      if (RCurl::url.exists("https://gitlab.opencode.de/robert-koch-institut/zentrum-fuer-krebsregisterdaten/cancerdata-references/")){
-        download.file(paste0("https://gitlab.opencode.de/robert-koch-institut/zentrum-fuer-krebsregisterdaten/cancerdata-references/-/raw/main/data/v2/Klassifikationen/",
-                           rki_name,".csv"), destfile = paste0("./Referenzdaten-Latest/",localname,".csv"), method="curl")
+      rki_address <- paste0("https://gitlab.opencode.de/robert-koch-institut/zentrum-fuer-krebsregisterdaten/cancerdata-references/-/raw/main/data/v2/Klassifikationen/", rki_name, ".csv")
+      if (RCurl::url.exists(rki_address)){
+        download.file(rki_address, destfile = paste0("./Referenzdaten-Latest/",localname,".csv"), method="curl")
         temp_reference <- read.csv2(paste0("./Referenzdaten-Latest/",localname, ".csv"),blank.lines.skip = FALSE, encoding="UTF-8")
         write.csv(temp_reference, paste0("./Referenzdaten-Latest/",localname, ".csv"), fileEncoding="UTF-8", row.names=FALSE)
       } else {
@@ -86,12 +86,12 @@ local_rki_mapping$local_names <- c("geschlecht","menge_fm","tnm8_t_krsh","tnm8_n
                                    "tage","seite","janein","grading","stadium","lk_anzahl","tumorgroesse",
                                    "icd_10codes_tod_zfkd","tnm_praefix","morphologie_zfkd","topographie_zfkd","icd_10codes_zfkd","residualstatus","ops_codes_zfkd","diagnosesicherung","datumsangabe",
                                    "therapieart","applikationsart","applikationsspezifizierung","zielgebiete","zielgebiete_version","intention_op","intention_st","intention_sy","stellung_op", 
-                                   "landkreis","menopause","rezeptorstatus","icd10_version","icdo3_version","tnm_version","ops_version")
+                                   "landkreis","menopause","rezeptorstatus","icd10_version","icdo3_version","tnm_version","ops_version", "substanz", "ReferenzlisteSubstanzenV1.2")
 local_rki_mapping$rki_names <-c("geschlecht", "fm_lokalisation", "", "", "", "", "", "", "", "", "", "tnm_l", "tnm_v", "tnm_pn", "tnm_s", "", "", "", "",
                                 "beurteilung_gesamt", "verlauf_lokal", "verlauf_lymphe", "verlauf_fern", "", "seitenlokalisation", "", "grading_clin", "tnm_uicc", "", "",
                                 "icd10_todesursache", "tnm_cpu", "morphologie", "topographie", "icd10", "r_typ", "ops", "diagnosesicherung_clin", "",
                                 "therapieart", "", "", "", "", "op_intention", "st_intention", "syst_intention", "st_op_stellung",
-                                "", "menopausenstatus", "hormonrezeptor", "icd10_version", "morphologie_version", "tnm_auflage", "")
+                                "", "menopausenstatus", "hormonrezeptor", "icd10_version", "morphologie_version", "tnm_auflage", "", "substanz", "")
 reference_data <- download_data(local_rki_mapping)
 
 
