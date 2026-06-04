@@ -103,7 +103,7 @@ if (dim(dta_no_NA)[1] == 0) {
       FUN = function(x) {
         valid <- x[!is.na(x) & trimws(x) != ""]
         if (length(valid) > 0) {
-          paste(unique(valid), collapse = ";")
+          paste(unique(trimws(valid)), collapse = ";")
         } else {
           NA_character_
         }
